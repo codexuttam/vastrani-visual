@@ -2,40 +2,124 @@
 
 AI-powered touchless human-computer interface.
 
-## Phase 1
-Phase 1 implements the foundational structure of the project and a working webcam application with a basic HUD. It does not include hand tracking, gesture recognition, AI integration, or hardware control.
+---
 
-### Installation
+## Phase 1 — Project Bootstrap & Webcam
 
-1. Create a virtual environment:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
+* Project structure created
+* Centralized configuration (`config.py`)
+* Webcam capture with mirrored selfie view
+* FPS display
+* VisionControl HUD (dark/cyan style)
+* Clean shutdown on Q/ESC
 
-2. Install requirements:
-   ```bash
-   pip install -r requirements.txt
-   ```
+---
 
-3. Configure environment variables (optional):
-   Copy `.env.example` to `.env` and modify as needed (e.g. changing `CAMERA_INDEX`).
+## Phase 2 — Hand Landmark Detection
 
-### How to Run
+* MediaPipe Hands integration (`vision/hand_tracker.py`)
+* 21-point hand landmark detection
+* Landmark skeleton drawn on webcam feed
+* Modular `HandTracker` class — no UI logic inside
 
-1. Ensure your virtual environment is active.
-2. Run the application:
-   ```bash
-   python app.py
-   ```
+---
 
-### Controls
-- **Q** or **ESC**: Quit the application safely.
+## Phase 3 — Hand Feature Extraction & Smoothing
 
-### Expected Result
-- A webcam window opens with a dark/cyan HUD displaying "VISIONCONTROL", a "CAMERA LIVE" indicator, your current FPS, and "Gesture interface initializing..." in the center.
-- The image should be mirrored (selfie view).
-- If the camera fails to open (e.g. due to macOS permissions), a clear error message is printed to the terminal without crashing.
+### What was implemented
 
-### Future Phases
-Subsequent phases will introduce hand landmark detection, gesture mapping, a command state machine, Arduino serial communication, AR emoji rendering, and OpenAI integration.
+* **Normalized coordinates** — all x/y/z in [0.0, 1.0] frame space
+* **Palm center** — averaged from wrist + 4 MCP landmarks
+* **Finger extension detection** — geometric tip/pip/angle heuristic for each finger
+* **Finger joint angles** — calculated at PIP joints using `calculate_angle(a, b, c)`
+* **Pinch distance** — thumb tip ↔ index tip, normalized by palm size
+* **Hand orientation** — angle in degrees from wrist→middle MCP
+* **Hand movement** — dx, dy, speed, direction (LEFT/RIGHT/UP/DOWN/STATIONARY)
+* **EMA smoothing** — configurable alpha (`SMOOTHING_ALPHA`), applied to all features
+* **Debug diagnostics panel** — rendered in top-right corner when `DEBUG_FEATURES=true`
+
+### Feature Data Structure
+
+```python
+@dataclass
+class HandFeatureSet:
+    valid: bool              # False when no hand detected
+
+    palm_x: float            # normalized [0,1]
+    palm_y: float
+    palm_z: float
+
+    thumb_extended: bool
+    index_extended: bool
+    middle_extended: bool
+    ring_extended: bool
+    pinky_extended: bool
+
+    thumb_angle: float       # degrees
+    index_angle: float
+    middle_angle: float
+    ring_angle: float
+    pinky_angle: float
+
+    thumb_index_distance: float   # normalized by palm size
+    palm_size: float
+
+    hand_angle: float        # wrist→middle MCP direction in degrees
+
+    dx: float                # smoothed movement delta
+    dy: float
+    speed: float
+    direction: str           # LEFT / RIGHT / UP / DOWN / STATIONARY
+```
+
+---
+
+## Installation
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+## Running
+
+```bash
+python app.py
+```
+
+Controls: **Q** or **ESC** to quit.
+
+## Running Tests
+
+```bash
+pytest tests/ -v
+```
+
+## Configuration (`.env`)
+
+Copy `.env.example` to `.env` to override defaults:
+
+| Variable                    | Default       | Description                          |
+|-----------------------------|---------------|--------------------------------------|
+| `CAMERA_INDEX`              | `0`           | Webcam index                         |
+| `FRAME_WIDTH`               | `1280`        | Capture width                        |
+| `FRAME_HEIGHT`              | `720`         | Capture height                       |
+| `TARGET_FPS`                | `30`          | Target render FPS                    |
+| `SMOOTHING_ALPHA`           | `0.35`        | EMA alpha (0→smooth, 1→raw)          |
+| `FINGER_EXTENSION_THRESHOLD`| `0.5`         | Angle fraction for extension detect  |
+| `DEBUG_FEATURES`            | `true`        | Show feature diagnostics panel       |
+
+---
+
+## Future Phases
+
+* **Phase 4** — Gesture state machine (OPEN_PALM, FIST, SWIPE, etc.)
+* **Phase 5** — Virtual device control
+* **Phase 6** — Arduino serial communication
+* **Phase 7** — Face tracking
+* **Phase 8** — AR emoji renderer
+* **Phase 9** — OpenAI integration
+* **Phase 10** — Natural-language intent
+* **Phase 11** — Polished UI/HUD
+* **Phase 12** — Testing, reliability, documentation
