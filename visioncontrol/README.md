@@ -112,7 +112,63 @@ Copy `.env.example` to `.env` to override defaults:
 
 ---
 
-## Future Phases
+## Phase 4 — Gesture Recognition State Machine
+
+### Implemented
+
+- **OPEN_PALM** — all 5 fingers extended + angle validation
+- **FIST** — all fingers folded + curl angle validation
+- **TWO_FINGERS** — index + middle extended, ring + pinky folded
+- **PINCH** — thumb↔index normalized distance with hysteresis
+- **SWIPE_LEFT / SWIPE_RIGHT** — palm movement history: distance, velocity, horizontal dominance, duration
+- **Temporal confirmation** — gesture must hold for `GESTURE_CONFIRM_FRAMES` consecutive frames before activating
+- **Debouncing** — gesture event fires exactly once per activation, not every frame
+- **Pinch hysteresis** — `PINCH_ON_THRESHOLD` / `PINCH_OFF_THRESHOLD` prevent oscillation
+- **Swipe anti-diagonal** — horizontal displacement must dominate vertical (`SWIPE_HORIZONTAL_DOMINANCE`)
+- **Geometric confidence** — calculated from finger angles, state consistency; normalized to [0,1]
+- **State machine** — NO_GESTURE → CANDIDATE → ACTIVE → COOLDOWN → NO_GESTURE
+- **GestureMapper** — Gesture → Abstract Action (no device or Arduino coupling)
+- **ControlMode** — IDLE / CONTROL tracked by mapper
+- **EMERGENCY_STOP** — FIST produces this action and returns mode to IDLE
+- **Gesture engine HUD panel** — Current, Event, Action, Confidence, Mode, State displayed live
+
+### Static vs Event gestures
+
+| Category | Gestures |
+|---|---|
+| **Static** (continuous) | OPEN_PALM, FIST, TWO_FINGERS, PINCH |
+| **Event** (one-shot) | SWIPE_LEFT, SWIPE_RIGHT |
+
+Static gestures represent *current hand state*. Event gestures represent *an action that happened* and fire once via cooldown.
+
+### Gesture → Action mapping
+
+| Gesture | Action |
+|---|---|
+| OPEN_PALM | ENTER_CONTROL |
+| FIST | EMERGENCY_STOP |
+| TWO_FINGERS | SELECT |
+| PINCH | CONFIRM |
+| SWIPE_LEFT | PREVIOUS |
+| SWIPE_RIGHT | NEXT |
+
+### Configurable thresholds
+
+| Variable | Default | Description |
+|---|---|---|
+| `GESTURE_CONFIRM_FRAMES` | `5` | Frames needed to confirm a static gesture |
+| `GESTURE_COOLDOWN_MS` | `500` | Cooldown (ms) after gesture fires |
+| `PINCH_ON_THRESHOLD` | `0.22` | Normalized distance to activate pinch |
+| `PINCH_OFF_THRESHOLD` | `0.28` | Normalized distance to release pinch |
+| `SWIPE_HISTORY_SIZE` | `15` | Palm positions kept in rolling history |
+| `SWIPE_MIN_DISTANCE` | `0.18` | Minimum horizontal displacement |
+| `SWIPE_MIN_SPEED` | `0.6` | Minimum speed (units/s) |
+| `SWIPE_MAX_VERTICAL_RATIO` | `0.6` | Max vertical/horizontal ratio |
+| `SWIPE_MAX_DURATION` | `0.8` | Max swipe duration (seconds) |
+| `SWIPE_HORIZONTAL_DOMINANCE` | `1.4` | dx must be N× greater than dy |
+| `DEBUG_GESTURES` | `true` | Show gesture engine panel in HUD |
+
+
 
 * **Phase 4** — Gesture state machine (OPEN_PALM, FIST, SWIPE, etc.)
 * **Phase 5** — Virtual device control

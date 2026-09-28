@@ -4,26 +4,44 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+
 class Config:
-    # Camera settings
+    # ── Camera ────────────────────────────────────────────────────────────────
     CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", 0))
-    FRAME_WIDTH = int(os.getenv("FRAME_WIDTH", 1280))
+    FRAME_WIDTH  = int(os.getenv("FRAME_WIDTH",  1280))
     FRAME_HEIGHT = int(os.getenv("FRAME_HEIGHT", 720))
-    TARGET_FPS = int(os.getenv("TARGET_FPS", 30))
+    TARGET_FPS   = int(os.getenv("TARGET_FPS",   30))
+    WINDOW_NAME  = os.getenv("WINDOW_NAME", "VisionControl")
 
-    # UI settings
-    WINDOW_NAME = os.getenv("WINDOW_NAME", "VisionControl")
-
-    # Hand tracker settings
-    MAX_NUM_HANDS = int(os.getenv("MAX_NUM_HANDS", 1))
+    # ── Hand tracker ──────────────────────────────────────────────────────────
+    MAX_NUM_HANDS            = int(os.getenv("MAX_NUM_HANDS", 1))
     MIN_DETECTION_CONFIDENCE = float(os.getenv("MIN_DETECTION_CONFIDENCE", 0.7))
-    MIN_TRACKING_CONFIDENCE = float(os.getenv("MIN_TRACKING_CONFIDENCE", 0.6))
+    MIN_TRACKING_CONFIDENCE  = float(os.getenv("MIN_TRACKING_CONFIDENCE",  0.6))
 
-    # Feature extraction settings
-    SMOOTHING_ALPHA = float(os.getenv("SMOOTHING_ALPHA", 0.35))
-    FINGER_EXTENSION_THRESHOLD = float(os.getenv("FINGER_EXTENSION_THRESHOLD", 0.5))
-    DEBUG_FEATURES = os.getenv("DEBUG_FEATURES", "true").lower() == "true"
+    # ── Feature extraction ────────────────────────────────────────────────────
+    SMOOTHING_ALPHA              = float(os.getenv("SMOOTHING_ALPHA",              0.35))
+    FINGER_EXTENSION_THRESHOLD   = float(os.getenv("FINGER_EXTENSION_THRESHOLD",   0.5))
 
-    # OpenAI Settings (for later phases)
+    # ── Gesture state machine ─────────────────────────────────────────────────
+    GESTURE_CONFIRM_FRAMES       = int(os.getenv("GESTURE_CONFIRM_FRAMES",         5))
+    GESTURE_COOLDOWN_MS          = float(os.getenv("GESTURE_COOLDOWN_MS",          500.0))
+
+    # Pinch hysteresis
+    PINCH_ON_THRESHOLD           = float(os.getenv("PINCH_ON_THRESHOLD",           0.22))
+    PINCH_OFF_THRESHOLD          = float(os.getenv("PINCH_OFF_THRESHOLD",          0.28))
+
+    # Swipe detection
+    SWIPE_HISTORY_SIZE           = int(os.getenv("SWIPE_HISTORY_SIZE",             15))
+    SWIPE_MIN_DISTANCE           = float(os.getenv("SWIPE_MIN_DISTANCE",           0.18))
+    SWIPE_MIN_SPEED              = float(os.getenv("SWIPE_MIN_SPEED",              0.6))
+    SWIPE_MAX_VERTICAL_RATIO     = float(os.getenv("SWIPE_MAX_VERTICAL_RATIO",     0.6))
+    SWIPE_MAX_DURATION           = float(os.getenv("SWIPE_MAX_DURATION",           0.8))
+    SWIPE_HORIZONTAL_DOMINANCE   = float(os.getenv("SWIPE_HORIZONTAL_DOMINANCE",   1.4))
+
+    # ── Debug flags ───────────────────────────────────────────────────────────
+    DEBUG_FEATURES  = os.getenv("DEBUG_FEATURES",  "true").lower()  == "true"
+    DEBUG_GESTURES  = os.getenv("DEBUG_GESTURES",  "true").lower()  == "true"
+
+    # ── OpenAI (later phases) ─────────────────────────────────────────────────
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
+    OPENAI_MODEL   = os.getenv("OPENAI_MODEL",   "gpt-4o")
