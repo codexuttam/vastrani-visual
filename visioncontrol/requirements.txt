@@ -1,5 +1,6 @@
 opencv-python
 numpy
-mediapipe
+mediapipe==0.10.21
 python-dotenv
 pytest
+packaging
