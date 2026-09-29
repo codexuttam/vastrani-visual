@@ -3,7 +3,10 @@ app.py — VisionControl Application Coordinator
 
 Pipeline per frame:
     Camera → HandTracker → FeatureExtractor → GestureStateMachine
-           → GestureMapper → HUD → Display
+           → GestureMapper → DeviceController → HUD → Display
+
+Phase 5 adds:
+    GestureMapper → abstract action → DeviceController → registry + virtual devices
 """
 
 import cv2
@@ -16,6 +19,7 @@ from gestures import (
     FeatureExtractor, GestureStateMachine, GestureMapper,
     GestureResult, GestureEvent, ControlMode, GestureType,
 )
+from devices import DeviceController, CommandBus, SerialTransport
 from ui.hud import HUD
 
 
@@ -52,17 +56,44 @@ class VisionControlApp:
             swipe_horizontal_dominance=cfg.SWIPE_HORIZONTAL_DOMINANCE,
         )
         self.gesture_mapper = GestureMapper()
+
+        # Phase 6 — Serial Transport & Command Bus
+        self.serial_transport = SerialTransport(
+            port=cfg.SERIAL_PORT,
+            baud_rate=cfg.SERIAL_BAUD_RATE,
+            timeout=cfg.SERIAL_TIMEOUT,
+            auto_detect=cfg.SERIAL_AUTO_DETECT,
+            reconnect_interval=cfg.SERIAL_RECONNECT_INTERVAL,
+            debug_serial=cfg.DEBUG_SERIAL,
+        )
+        self.command_bus = CommandBus(
+            mode=cfg.DEVICE_MODE,
+            transport=self.serial_transport,
+        )
+
+        # Phase 5 & 6 — device controller with command bus
+        self.device_controller = DeviceController(
+            command_bus=self.command_bus,
+            mode=cfg.DEVICE_MODE,
+        )
+
         self.hud = HUD()
 
         self.running = False
-        # Persist last event for a short display window (don't clear every frame)
+        # Persist last event for a short display window
         self._last_event: Optional[GestureEvent] = None
         self._last_event_clear_counter: int = 0
-        self._EVENT_DISPLAY_FRAMES = 30  # show event label for N frames
+        self._EVENT_DISPLAY_FRAMES = 30
 
     def start(self):
         print("Initializing VisionControl...")
         try:
+            if self.config.DEVICE_MODE == "HARDWARE" and self.config.SERIAL_ENABLED:
+                print(f"[HARDWARE MODE] Connecting to Arduino...")
+                self.serial_transport.connect()
+            else:
+                print("[VIRTUAL MODE] Hardware transport disabled.")
+
             self.camera.start()
             self.running = True
             self.run_loop()
@@ -99,11 +130,16 @@ class VisionControlApp:
             # 4. Gesture state machine (Phase 4) ───────────────────────────────
             result, event = self.gesture_sm.update(features)
 
-            # 5. Map gesture → action, update control mode ────────────────────
+            # 5. Map gesture → action, update mode ────────────────────────────
             if event is not None:
-                self.gesture_mapper.map_event(event)
+                action = self.gesture_mapper.map_event(event)
                 self._last_event = event
                 self._last_event_clear_counter = self._EVENT_DISPLAY_FRAMES
+
+                # 5b. Phase 5 & 6 — feed action into device controller ───────────
+                cmd_result = self.device_controller.handle_action(action)
+                # Sync control mode between gesture mapper and device controller
+                self.device_controller.mode = self.gesture_mapper.mode
 
             # Count down event display window
             if self._last_event_clear_counter > 0:
@@ -121,6 +157,14 @@ class VisionControlApp:
                 mode=self.gesture_mapper.mode,
                 debug_features=self.config.DEBUG_FEATURES,
                 debug_gestures=self.config.DEBUG_GESTURES,
+                # Phase 5 & 6
+                registry=self.device_controller.registry,
+                pending_action=self.device_controller.pending_action,
+                debug_devices=self.config.DEBUG_DEVICES,
+                command_history=self.device_controller.command_history(),
+                device_mode=self.command_bus.mode,
+                arduino_connected=self.serial_transport.is_connected(),
+                arduino_unresponsive=self.serial_transport.is_unresponsive,
             )
 
             # 7. Display ───────────────────────────────────────────────────────
@@ -134,6 +178,7 @@ class VisionControlApp:
         print("Shutting down VisionControl...")
         self.camera.stop()
         self.hand_tracker.close()
+        self.serial_transport.disconnect()
         cv2.destroyAllWindows()
         print("Cleanup complete.")
 

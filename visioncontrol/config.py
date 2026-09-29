@@ -42,6 +42,20 @@ class Config:
     DEBUG_FEATURES  = os.getenv("DEBUG_FEATURES",  "true").lower()  == "true"
     DEBUG_GESTURES  = os.getenv("DEBUG_GESTURES",  "true").lower()  == "true"
 
+    # ── Phase 5: Device control ───────────────────────────────────────────────
+    COMMAND_HISTORY_SIZE = int(os.getenv("COMMAND_HISTORY_SIZE", 50))
+    DEBUG_DEVICES        = os.getenv("DEBUG_DEVICES", "true").lower() == "true"
+
+    # ── Phase 6: Serial Hardware Integration ──────────────────────────────────
+    SERIAL_ENABLED            = os.getenv("SERIAL_ENABLED", "true").lower() == "true"
+    SERIAL_PORT               = os.getenv("SERIAL_PORT", "")
+    SERIAL_BAUD_RATE          = int(os.getenv("SERIAL_BAUD_RATE", 115200))
+    SERIAL_TIMEOUT            = float(os.getenv("SERIAL_TIMEOUT", 1.0))
+    SERIAL_RECONNECT_INTERVAL = float(os.getenv("SERIAL_RECONNECT_INTERVAL", 3.0))
+    SERIAL_AUTO_DETECT        = os.getenv("SERIAL_AUTO_DETECT", "true").lower() == "true"
+    DEVICE_MODE               = os.getenv("DEVICE_MODE", "VIRTUAL").upper()
+    DEBUG_SERIAL              = os.getenv("DEBUG_SERIAL", "true").lower() == "true"
+
     # ── OpenAI (later phases) ─────────────────────────────────────────────────
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL   = os.getenv("OPENAI_MODEL",   "gpt-4o")

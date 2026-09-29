@@ -171,11 +171,85 @@ Static gestures represent *current hand state*. Event gestures represent *an act
 
 
 * **Phase 4** — Gesture state machine (OPEN_PALM, FIST, SWIPE, etc.)
-* **Phase 5** — Virtual device control
-* **Phase 6** — Arduino serial communication
+* **Phase 5** — Virtual device control (DONE)
+* **Phase 6** — Arduino serial hardware integration (DONE)
 * **Phase 7** — Face tracking
 * **Phase 8** — AR emoji renderer
 * **Phase 9** — OpenAI integration
 * **Phase 10** — Natural-language intent
 * **Phase 11** — Polished UI/HUD
 * **Phase 12** — Testing, reliability, documentation
+
+---
+
+## Phase 5 — Virtual Device Control
+
+### Implemented
+
+- Device registry (`devices/registry.py`) with circular selection
+- Virtual devices (`devices/virtual_device.py`) — deterministic state abstraction
+- Device models (`devices/models.py`) — `DeviceState`, `CommandResult`, `CommandRecord`
+- Device validator (`devices/validator.py`) — rejects unknown devices/actions/levels
+- Device controller (`devices/controller.py`) — consumes abstract `GestureAction`s
+- Power control — ON / OFF / TOGGLE
+- Level control — `SET_LEVEL` with per-type range enforcement
+- Emergency stop — all devices to safe state instantly
+- Command history — in-memory ring buffer (configurable, default 50 entries)
+- Device HUD panel — current device, power, level, pending action, recent commands
+- Device navigation rail — bottom bar showing all devices, selected highlighted
+- Full gesture → device integration (OPEN_PALM, SWIPE, TWO_FINGERS, PINCH, FIST)
+- Developer test mode (`python -m devices.dev_mode`) — no webcam required
+
+### Virtual Devices
+
+| ID        | Name               | Type  |
+|-----------|--------------------|-------|
+| LIGHT_01  | Living Room Light  | LIGHT |
+| FAN_01    | Ceiling Fan        | FAN   |
+| MUSIC_01  | Music Player       | MUSIC |
+| SERVO_01  | Servo Motor        | SERVO |
+
+---
+
+## Phase 6 — Arduino Hardware Integration
+
+### Implemented:
+
+- `pyserial` integration
+- serial transport (`devices/serial_transport.py`)
+- command bus (`devices/command_bus.py`)
+- hardware mode (`DEVICE_MODE=HARDWARE`)
+- virtual mode (`DEVICE_MODE=VIRTUAL`)
+- serial protocol (`COMMAND|DEVICE_ID|VALUE\n`)
+- Arduino handshake (`PING|SYSTEM` → `PONG|SYSTEM`)
+- command acknowledgements (`OK|...` / `ERR|...`)
+- reconnect handling (auto-reconnect without freezing camera loop)
+- emergency stop (`ALL_OFF|SYSTEM`)
+- Arduino firmware (`arduino/visioncontrol.ino`)
+- hardware status HUD (displays mode & connection state)
+- hardware command logging (records TX, RX, ACK, and virtual vs hardware status)
+
+### Wiring Section
+
+| Device ID | Arduino Pin | Pin Type | Expected Hardware / Behavior |
+|-----------|-------------|----------|------------------------------|
+| `LIGHT_01`| Pin 9       | PWM      | LED indicator or PWM dimmer circuit |
+| `FAN_01`  | Pin 8       | Digital  | Safe low-voltage motor driver / Relay module |
+| `SERVO_01`| Pin 10      | Servo PWM| SG90 or MG996R Servo motor (0° to 180°) |
+| `MUSIC_01`| Pin 11      | Digital  | LED status indicator |
+
+> **SAFETY NOTE**: Do NOT connect Arduino GPIO pins directly to mains AC equipment! Always use isolated, safe low-voltage prototype components or relays.
+
+### Configuration (`.env`)
+
+| Variable                   | Default   | Description |
+|----------------------------|-----------|-------------|
+| `DEVICE_MODE`              | `VIRTUAL` | `VIRTUAL` (simulated only) or `HARDWARE` (send to Arduino) |
+| `SERIAL_ENABLED`           | `true`    | Enable or disable serial module |
+| `SERIAL_PORT`              | `""`      | Serial port (auto-detects if blank) |
+| `SERIAL_BAUD_RATE`         | `115200`  | Serial baud rate |
+| `SERIAL_TIMEOUT`           | `1.0`     | Serial read/write timeout (seconds) |
+| `SERIAL_RECONNECT_INTERVAL`| `3.0`     | Reconnection retry interval (seconds) |
+| `SERIAL_AUTO_DETECT`       | `true`    | Auto-detect USB serial port on macOS, Linux, or Windows |
+| `DEBUG_SERIAL`             | `true`    | Print serial TX/RX debug lines to console |
+
