@@ -21,6 +21,7 @@ from gestures import (
 )
 from devices import DeviceController, CommandBus, SerialTransport
 from ar import ARController, ARRenderer
+from ai import AIRouter
 from ui.hud import HUD
 
 
@@ -107,6 +108,12 @@ class VisionControlApp:
             mode=cfg.DEVICE_MODE,
         )
 
+        # Phase 9 — OpenAI Event Router
+        self.ai_router = AIRouter(
+            ai_mode=cfg.AI_MODE,
+            min_confidence=cfg.AI_MIN_CONFIDENCE,
+        )
+
         self.hud = HUD()
 
         self.running = False
@@ -114,6 +121,7 @@ class VisionControlApp:
         self._last_event: Optional[GestureEvent] = None
         self._last_event_clear_counter: int = 0
         self._EVENT_DISPLAY_FRAMES = 30
+        self._test_prompt_idx = 0
 
     def start(self):
         print("Initializing VisionControl...")
@@ -141,7 +149,7 @@ class VisionControlApp:
     def run_loop(self):
         print(
             f"VisionControl active on Camera {self.config.CAMERA_INDEX}. "
-            "Press 'q' or 'ESC' to quit."
+            "Press 'q' or 'ESC' to quit. Press 't' to test AI semantic command."
         )
         while self.running:
             # 1. Capture ──────────────────────────────────────────────────────
@@ -149,6 +157,9 @@ class VisionControlApp:
             if not success:
                 print("\n[WARNING] Failed to grab frame.\n")
                 break
+
+            # Poll async completed AI results
+            self.ai_router.check_completed_results()
 
             # 2. Hand landmarks (Phase 2) ──────────────────────────────────────
             frame, landmarks_list = self.hand_tracker.process(frame)
@@ -221,6 +232,11 @@ class VisionControlApp:
                 # Phase 8
                 ar_state=self.ar_controller.state,
                 debug_ar=self.config.DEBUG_AR,
+                # Phase 9
+                ai_status=self.ai_router.status,
+                ai_mode=self.ai_router.ai_mode,
+                last_ai_record=self.ai_router.last_record,
+                debug_ai=self.config.DEBUG_AI,
             )
 
             # 8. Display ───────────────────────────────────────────────────────
@@ -229,9 +245,24 @@ class VisionControlApp:
             key = cv2.waitKey(1) & 0xFF
             if key == ord("q") or key == 27:
                 self.running = False
+            elif key == ord("t"):
+                test_prompts = [
+                    "Turn the living room light on",
+                    "Set the living room light to 50 percent",
+                    "Set the ceiling fan to speed 2",
+                    "Turn on the bedroom AC",
+                    "Make rocket fly",
+                ]
+                prompt = test_prompts[self._test_prompt_idx % len(test_prompts)]
+                self._test_prompt_idx += 1
+                print(f"\n[AI TEST INPUT] Natural language command: '{prompt}'")
+                self.ai_router.process_text_command_async(
+                    prompt, self.device_controller.registry, self.device_controller
+                )
 
     def cleanup(self):
         print("Shutting down VisionControl...")
+        self.ai_router.stop()
         self.camera.stop()
         self.hand_tracker.close()
         if self.face_tracker:
@@ -244,3 +275,4 @@ class VisionControlApp:
 if __name__ == "__main__":
     app = VisionControlApp()
     app.start()
+

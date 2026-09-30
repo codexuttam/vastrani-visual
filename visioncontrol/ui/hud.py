@@ -83,6 +83,11 @@ class HUD:
         # ── Phase 8 ──────────────────────────────────────────────────────────
         ar_state:       Optional[object]         = None,
         debug_ar:       bool                     = False,
+        # ── Phase 9 ──────────────────────────────────────────────────────────
+        ai_status:      str                      = "READY",
+        ai_mode:        str                      = "EVENT",
+        last_ai_record: Optional[object]         = None,
+        debug_ai:       bool                     = True,
     ):
         h, w, _ = frame.shape
 
@@ -158,6 +163,10 @@ class HUD:
         # ── Phase 8: AR Debug Panel ───────────────────────────────────────────
         if debug_ar and ar_state is not None:
             self._render_ar_panel(frame, ar_state, face_state)
+
+        # ── Phase 9: AI Intelligence Panel ───────────────────────────────────
+        if debug_ai:
+            self._render_ai_panel(frame, ai_status, ai_mode, last_ai_record)
 
         return frame
 
@@ -534,3 +543,54 @@ class HUD:
             label = eff[:3].upper()
             (tw, _), _ = cv2.getTextSize(label, FONT_MONO, 0.8, 1)
             cv2.putText(frame, label, (cx - tw // 2, rail_y + 18), FONT_MONO, 0.8, text_color, 1, cv2.LINE_AA)
+
+    # ─── Phase 9: AI Intelligence Panel (Section 28) ──────────────────────────
+
+    def _render_ai_panel(self, frame, status: str = "READY", mode: str = "EVENT", last_record=None):
+        h, w, _ = frame.shape
+        px, py   = w - 300, 310
+        pw, ph   = 285, 145
+
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (px - 8, py - 4), (px + pw, py + ph), DARK_GRAY, -1)
+        cv2.addWeighted(overlay, 0.72, frame, 0.28, 0, frame)
+
+        # Header
+        cv2.rectangle(frame, (px - 8, py - 4), (px + pw, py + 22), PURPLE, -1)
+        cv2.putText(frame, "AI INTELLIGENCE", (px, py + 14), FONT, 0.48, WHITE, 1, cv2.LINE_AA)
+
+        lh = 20
+        y  = py + 38
+
+        def row(label, value, color=WHITE):
+            nonlocal y
+            cv2.putText(frame, f"{label:<12}{value}", (px, y),
+                        FONT_MONO, 1.0, color, 1, cv2.LINE_AA)
+            y += lh
+
+        status_colors = {
+            "READY": GREEN,
+            "PROCESSING": ORANGE,
+            "SUCCESS": GREEN,
+            "LOW_CONFIDENCE": YELLOW,
+            "REJECTED": RED,
+            "ERROR": RED,
+            "TIMEOUT": RED,
+            "DISABLED": (140, 140, 140),
+        }
+
+        row("Status:", status, status_colors.get(status, WHITE))
+        row("Mode:", mode, TEAL)
+
+        if last_record:
+            intent_str = last_record.intent.upper() if last_record.intent else "NONE"
+            dev_str = last_record.device_id or "NONE"
+            conf_str = f"{last_record.confidence:.2f}" if last_record.confidence else "0.00"
+            row("Last Intent:", intent_str, YELLOW)
+            row("Device:", dev_str, CYAN)
+            row("Confidence:", conf_str, WHITE)
+        else:
+            row("Last Intent:", "NONE", (140, 140, 140))
+            row("Device:", "NONE", (140, 140, 140))
+            row("Confidence:", "—", (140, 140, 140))
+

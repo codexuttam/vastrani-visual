@@ -75,6 +75,12 @@ class Config:
     EMOJI_OFFSET_X          = float(os.getenv("EMOJI_OFFSET_X", 0.0))
     EMOJI_OFFSET_Y          = float(os.getenv("EMOJI_OFFSET_Y", -0.05))
 
-    # ── OpenAI (later phases) ─────────────────────────────────────────────────
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-    OPENAI_MODEL   = os.getenv("OPENAI_MODEL",   "gpt-4o")
+    # ── Phase 9: OpenAI Intelligence Layer ───────────────────────────────────
+    OPENAI_API_KEY          = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_MODEL            = os.getenv("OPENAI_MODEL", "gpt-4o")
+    OPENAI_TIMEOUT          = float(os.getenv("OPENAI_TIMEOUT", 10.0))
+    OPENAI_ENABLED          = os.getenv("OPENAI_ENABLED", "true").lower() == "true"
+    AI_MODE                 = os.getenv("AI_MODE", "EVENT").upper()
+    AI_MIN_CONFIDENCE       = float(os.getenv("AI_MIN_CONFIDENCE", 0.75))
+    AI_MIN_REQUEST_INTERVAL = float(os.getenv("AI_MIN_REQUEST_INTERVAL", 1.0))
+    DEBUG_AI                = os.getenv("DEBUG_AI", "true").lower() == "true"
