@@ -14,7 +14,7 @@ import sys
 from typing import Optional
 
 from config import Config
-from vision import Camera, HandTracker
+from vision import Camera, HandTracker, FaceTracker, FaceFeatureExtractor
 from gestures import (
     FeatureExtractor, GestureStateMachine, GestureMapper,
     GestureResult, GestureEvent, ControlMode, GestureType,
@@ -43,6 +43,23 @@ class VisionControlApp:
             alpha=cfg.SMOOTHING_ALPHA,
             finger_extension_threshold=cfg.FINGER_EXTENSION_THRESHOLD,
         )
+
+        # Phase 7 — Face Tracker & Face Feature Extractor
+        self.face_enabled = cfg.FACE_ENABLED
+        if self.face_enabled:
+            self.face_tracker = FaceTracker(
+                max_num_faces=cfg.FACE_MAX_DETECTIONS,
+                min_detection_confidence=cfg.MIN_FACE_DETECTION_CONFIDENCE,
+                min_tracking_confidence=cfg.MIN_FACE_TRACKING_CONFIDENCE,
+            )
+            self.face_feature_extractor = FaceFeatureExtractor(
+                smoothing_alpha=cfg.FACE_SMOOTHING_ALPHA,
+                lost_timeout_ms=cfg.FACE_LOST_TIMEOUT_MS,
+            )
+        else:
+            self.face_tracker = None
+            self.face_feature_extractor = None
+
         self.gesture_sm = GestureStateMachine(
             confirm_frames=cfg.GESTURE_CONFIRM_FRAMES,
             cooldown_ms=cfg.GESTURE_COOLDOWN_MS,
@@ -124,6 +141,16 @@ class VisionControlApp:
             frame, landmarks_list = self.hand_tracker.process(frame)
             landmarks = landmarks_list[0] if landmarks_list else None
 
+            # 2b. Face landmarks (Phase 7) ─────────────────────────────────────
+            face_state = None
+            face_infer_ms = 0.0
+            if self.face_enabled and self.face_tracker is not None:
+                frame, primary_face_lms, _ = self.face_tracker.process(
+                    frame, debug_face=self.config.DEBUG_FACE
+                )
+                face_state = self.face_feature_extractor.extract(primary_face_lms)
+                face_infer_ms = self.face_tracker.inference_ms
+
             # 3. Feature extraction (Phase 3) ──────────────────────────────────
             features = self.feature_extractor.extract(landmarks)
 
@@ -165,6 +192,10 @@ class VisionControlApp:
                 device_mode=self.command_bus.mode,
                 arduino_connected=self.serial_transport.is_connected(),
                 arduino_unresponsive=self.serial_transport.is_unresponsive,
+                # Phase 7
+                face_state=face_state,
+                debug_face=self.config.DEBUG_FACE,
+                face_inference_ms=face_infer_ms,
             )
 
             # 7. Display ───────────────────────────────────────────────────────
@@ -178,6 +209,8 @@ class VisionControlApp:
         print("Shutting down VisionControl...")
         self.camera.stop()
         self.hand_tracker.close()
+        if self.face_tracker:
+            self.face_tracker.close()
         self.serial_transport.disconnect()
         cv2.destroyAllWindows()
         print("Cleanup complete.")

@@ -173,12 +173,64 @@ Static gestures represent *current hand state*. Event gestures represent *an act
 * **Phase 4** — Gesture state machine (OPEN_PALM, FIST, SWIPE, etc.)
 * **Phase 5** — Virtual device control (DONE)
 * **Phase 6** — Arduino serial hardware integration (DONE)
-* **Phase 7** — Face tracking
+* **Phase 7** — Face tracking (DONE)
 * **Phase 8** — AR emoji renderer
 * **Phase 9** — OpenAI integration
 * **Phase 10** — Natural-language intent
 * **Phase 11** — Polished UI/HUD
 * **Phase 12** — Testing, reliability, documentation
+
+---
+
+## Phase 7 — Face Tracking
+
+### Implemented:
+
+- local face landmark detection (`vision/face_tracker.py`)
+- normalized face coordinates (`[0.0, 1.0]`)
+- face center (`center_x`, `center_y`)
+- face width/height (`width`, `height`)
+- face scale (`scale`)
+- yaw, pitch, roll head orientation estimation
+- face movement tracking (`dx`, `dy`, `speed`)
+- temporal smoothing (`ExponentialSmoother`, `PointSmoother`, `AngleSmoother`)
+- face loss handling & grace period (`FACE_LOST_TIMEOUT_MS`)
+- primary face selection (largest face region)
+- face anchor (`FaceAnchor` model for Phase 8 integration)
+- face debug visualization & anchor crosshair rendering
+
+### Face Data Contract (`FaceState`)
+
+```python
+@dataclass
+class FaceState:
+    detected: bool
+    center_x: float
+    center_y: float
+    width: float
+    height: float
+    scale: float
+    yaw: float
+    pitch: float
+    roll: float
+    dx: float
+    dy: float
+    speed: float
+    timestamp: float
+
+    @property
+    def anchor(self) -> FaceAnchor: ...
+```
+
+### Configuration (`.env`)
+
+| Variable | Default | Description |
+|---|---|---|
+| `FACE_ENABLED` | `true` | Enable or disable real-time face tracking module |
+| `DEBUG_FACE` | `true` | Show facial landmarks, face anchor crosshair, and HUD panel |
+| `FACE_SMOOTHING_ALPHA` | `0.35` | Exponential smoothing alpha for face tracking parameters |
+| `FACE_LOST_TIMEOUT_MS` | `500.0` | Grace period (ms) before marking face lost after detection fails |
+| `FACE_MAX_DETECTIONS` | `2` | Maximum faces detected before primary face selection |
 
 ---
 

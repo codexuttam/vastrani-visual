@@ -56,6 +56,15 @@ class Config:
     DEVICE_MODE               = os.getenv("DEVICE_MODE", "VIRTUAL").upper()
     DEBUG_SERIAL              = os.getenv("DEBUG_SERIAL", "true").lower() == "true"
 
+    # ── Phase 7: Face Tracking ────────────────────────────────────────────────
+    FACE_ENABLED                  = os.getenv("FACE_ENABLED", "true").lower() == "true"
+    DEBUG_FACE                    = os.getenv("DEBUG_FACE", "true").lower() == "true"
+    FACE_SMOOTHING_ALPHA          = float(os.getenv("FACE_SMOOTHING_ALPHA", 0.35))
+    FACE_LOST_TIMEOUT_MS          = float(os.getenv("FACE_LOST_TIMEOUT_MS", 500.0))
+    FACE_MAX_DETECTIONS           = int(os.getenv("FACE_MAX_DETECTIONS", 2))
+    MIN_FACE_DETECTION_CONFIDENCE = float(os.getenv("MIN_FACE_DETECTION_CONFIDENCE", 0.5))
+    MIN_FACE_TRACKING_CONFIDENCE  = float(os.getenv("MIN_FACE_TRACKING_CONFIDENCE", 0.5))
+
     # ── OpenAI (later phases) ─────────────────────────────────────────────────
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL   = os.getenv("OPENAI_MODEL",   "gpt-4o")

@@ -76,6 +76,10 @@ class HUD:
         device_mode:    str                      = "VIRTUAL",
         arduino_connected: bool                  = False,
         arduino_unresponsive: bool               = False,
+        # ── Phase 7 ──────────────────────────────────────────────────────────
+        face_state:     Optional[object]         = None,
+        debug_face:     bool                     = False,
+        face_inference_ms: float                 = 0.0,
     ):
         h, w, _ = frame.shape
 
@@ -89,7 +93,10 @@ class HUD:
 
         # ── Bottom-left: FPS, mode & Arduino status HUD ───────────────────────
         mode_color = GREEN if mode == ControlMode.CONTROL else WHITE
-        cv2.putText(frame, f"FPS: {int(fps)}", (20, h - 110), FONT, 0.6, WHITE, 2, cv2.LINE_AA)
+        fps_str = f"FPS: {int(fps)}"
+        if face_inference_ms > 0:
+            fps_str += f" | Face: {face_inference_ms:.1f}ms"
+        cv2.putText(frame, fps_str, (20, h - 110), FONT, 0.6, WHITE, 2, cv2.LINE_AA)
         cv2.putText(frame, f"MODE: {mode.value}", (20, h - 85), FONT, 0.6, mode_color, 2, cv2.LINE_AA)
 
         # Section 25: Arduino status & Device Mode HUD
@@ -136,6 +143,10 @@ class HUD:
         # ── Feature debug panel ───────────────────────────────────────────────
         if debug_features and features is not None and features.valid:
             self._render_feature_panel(frame, features)
+
+        # ── Phase 7: Face tracking debug panel ────────────────────────────────
+        if debug_face and face_state is not None:
+            self._render_face_panel(frame, face_state, face_inference_ms)
 
         return frame
 
@@ -397,3 +408,44 @@ class HUD:
             cv2.putText(frame, f"{name:<8}{label}", (px, y),
                         FONT_MONO, 1.0, color, 1, cv2.LINE_AA)
             y += lh
+
+    # ─── Phase 7: Face Tracking Panel (Section 18) ────────────────────────────
+
+    def _render_face_panel(self, frame, fs, inference_ms: float = 0.0):
+        h, w, _ = frame.shape
+        px, py   = 20, 250
+        pw, ph   = 280, 160
+
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (px - 6, py - 4), (px + pw, py + ph), DARK_GRAY, -1)
+        cv2.addWeighted(overlay, 0.65, frame, 0.35, 0, frame)
+
+        lh = 20
+        y  = py + 16
+
+        def row(label, value, color=WHITE):
+            nonlocal y
+            cv2.putText(frame, f"{label:<10}{value}", (px, y),
+                        FONT_MONO, 1.0, color, 1, cv2.LINE_AA)
+            y += lh
+
+        cv2.putText(frame, "FACE TRACKING", (px, y - 2), FONT, 0.52, CYAN, 1, cv2.LINE_AA)
+        y += lh - 2
+
+        status_str   = "TRACKING" if fs.detected else "NO FACE"
+        status_color = GREEN if fs.detected else RED
+        row("Status:", status_str, status_color)
+
+        if fs.detected:
+            row("Center:", f"{fs.center_x:.2f}, {fs.center_y:.2f}", WHITE)
+            row("Scale:", f"{fs.scale:.2f}", YELLOW)
+            row("Yaw:", f"{fs.yaw:+.1f}d", TEAL)
+            row("Pitch:", f"{fs.pitch:+.1f}d", TEAL)
+            row("Roll:", f"{fs.roll:+.1f}d", TEAL)
+        else:
+            row("Center:", "—", (120, 120, 120))
+            row("Scale:", "—", (120, 120, 120))
+            row("Yaw/Pt/Rl:", "—", (120, 120, 120))
+
+        if inference_ms > 0:
+            row("Infer MS:", f"{inference_ms:.1f}ms", PURPLE)
