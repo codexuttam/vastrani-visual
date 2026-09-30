@@ -174,11 +174,61 @@ Static gestures represent *current hand state*. Event gestures represent *an act
 * **Phase 5** — Virtual device control (DONE)
 * **Phase 6** — Arduino serial hardware integration (DONE)
 * **Phase 7** — Face tracking (DONE)
-* **Phase 8** — AR emoji renderer
+* **Phase 8** — AR emoji renderer (DONE)
 * **Phase 9** — OpenAI integration
 * **Phase 10** — Natural-language intent
 * **Phase 11** — Polished UI/HUD
 * **Phase 12** — Testing, reliability, documentation
+
+---
+
+## Phase 8 — AR Emoji & Face Effects
+
+### Implemented:
+
+- AR renderer (`ar/renderer.py`)
+- face-anchor compositing (`ar/compositor.py`)
+- emoji asset manager (`ar/assets.py`)
+- alpha blending (`ARCompositor.blend_overlay`)
+- scaling (`EMOJI_SCALE_MULTIPLIER`)
+- rotation (`rotate_overlay`)
+- AR smoothing (`AR_SMOOTHING_ALPHA`)
+- face-loss handling (graceful hide on invalid anchor)
+- emoji navigation (`SWIPE_LEFT`, `SWIPE_RIGHT`)
+- emoji selection (`TWO_FINGERS`)
+- AR toggle (`PINCH`)
+- gesture-controlled AR effects (`ar/effects.py`)
+- AR HUD panel & top Emoji Rail (`ui/hud.py`)
+
+### Available Effects:
+
+- `happy` (😀)
+- `laughing` (😂)
+- `cool` (😎)
+- `angry` (😡)
+- `love` (😍)
+- `thinking` (🤔)
+
+### Gesture Controls for AR:
+
+| Gesture | Abstract Action | AR Engine Action |
+|---|---|---|
+| `SWIPE_RIGHT` | `NEXT` | Navigate to next emoji effect |
+| `SWIPE_LEFT` | `PREVIOUS` | Navigate to previous emoji effect |
+| `TWO_FINGERS` | `SELECT` | Select / Activate highlighted emoji |
+| `PINCH` | `CONFIRM` | Toggle AR effect ON / OFF |
+| `FIST` | `EMERGENCY_STOP` | Emergency Stop (hides AR effect & safe devices) |
+
+### Configuration (`.env`)
+
+| Variable | Default | Description |
+|---|---|---|
+| `AR_ENABLED` | `true` | Enable or disable AR emoji overlay rendering |
+| `DEBUG_AR` | `true` | Show AR effect engine status panel in HUD |
+| `AR_SMOOTHING_ALPHA` | `0.4` | Smoothing alpha for AR emoji motion |
+| `EMOJI_SCALE_MULTIPLIER` | `1.5` | Scale multiplier relative to face region |
+| `EMOJI_MIN_SCALE` | `0.1` | Minimum allowed emoji scale relative to frame |
+| `EMOJI_MAX_SCALE` | `2.0` | Maximum allowed emoji scale relative to frame |
 
 ---
 

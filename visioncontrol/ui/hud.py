@@ -80,6 +80,9 @@ class HUD:
         face_state:     Optional[object]         = None,
         debug_face:     bool                     = False,
         face_inference_ms: float                 = 0.0,
+        # ── Phase 8 ──────────────────────────────────────────────────────────
+        ar_state:       Optional[object]         = None,
+        debug_ar:       bool                     = False,
     ):
         h, w, _ = frame.shape
 
@@ -129,6 +132,10 @@ class HUD:
         if registry is not None:
             self._render_device_rail(frame, registry)
 
+        # ── Phase 8: Emoji Rail ───────────────────────────────────────────────
+        if ar_state is not None:
+            self._render_emoji_rail(frame, ar_state)
+
         # ── Phase 5/6: Device Control Panel ─────────────────────────────────
         if debug_devices and registry is not None:
             self._render_device_panel(
@@ -147,6 +154,10 @@ class HUD:
         # ── Phase 7: Face tracking debug panel ────────────────────────────────
         if debug_face and face_state is not None:
             self._render_face_panel(frame, face_state, face_inference_ms)
+
+        # ── Phase 8: AR Debug Panel ───────────────────────────────────────────
+        if debug_ar and ar_state is not None:
+            self._render_ar_panel(frame, ar_state, face_state)
 
         return frame
 
@@ -449,3 +460,77 @@ class HUD:
 
         if inference_ms > 0:
             row("Infer MS:", f"{inference_ms:.1f}ms", PURPLE)
+
+    # ─── Phase 8: AR Panel (Section 29 & 31) ──────────────────────────────────
+
+    def _render_ar_panel(self, frame, ar_state, face_state=None):
+        h, w, _ = frame.shape
+        px, py   = 20, 425
+        pw, ph   = 280, 150
+
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (px - 6, py - 4), (px + pw, py + ph), DARK_GRAY, -1)
+        cv2.addWeighted(overlay, 0.65, frame, 0.35, 0, frame)
+
+        lh = 20
+        y  = py + 16
+
+        def row(label, value, color=WHITE):
+            nonlocal y
+            cv2.putText(frame, f"{label:<10}{value}", (px, y),
+                        FONT_MONO, 1.0, color, 1, cv2.LINE_AA)
+            y += lh
+
+        cv2.putText(frame, "AR EFFECT ENGINE", (px, y - 2), FONT, 0.52, CYAN, 1, cv2.LINE_AA)
+        y += lh - 2
+
+        active = ar_state.enabled and ar_state.visible
+        status_str   = "ACTIVE" if active else "HIDDEN"
+        status_color = GREEN if active else RED
+        row("Status:", status_str, status_color)
+
+        row("Effect:", ar_state.current_effect.upper(), YELLOW)
+
+        face_str   = "TRACKING" if (face_state and face_state.detected) else "NO FACE"
+        face_color = GREEN if (face_state and face_state.detected) else RED
+        row("Face:", face_str, face_color)
+
+        if face_state and face_state.detected:
+            row("Anchor:", f"{face_state.center_x:.2f}, {face_state.center_y:.2f}", WHITE)
+            row("Rotation:", f"{face_state.roll:+.1f}d", TEAL)
+
+    # ─── Phase 8: Emoji Rail (Section 30) ─────────────────────────────────────
+
+    def _render_emoji_rail(self, frame, ar_state):
+        h, w, _ = frame.shape
+        effects = ["happy", "laughing", "cool", "angry", "love", "thinking"]
+        n = len(effects)
+        if n == 0:
+            return
+
+        rail_h  = 26
+        rail_y  = 65
+        rail_w  = 380
+        rail_x  = (w - rail_w) // 2
+
+        # Background
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (rail_x, rail_y), (rail_x + rail_w, rail_y + rail_h), (20, 20, 20), -1)
+        cv2.addWeighted(overlay, 0.75, frame, 0.25, 0, frame)
+
+        cell_w = rail_w // n
+        cur_idx = ar_state.current_index
+
+        for i, eff in enumerate(effects):
+            cx = rail_x + i * cell_w + cell_w // 2
+            is_sel = (i == cur_idx)
+
+            if is_sel:
+                cv2.rectangle(frame, (rail_x + i * cell_w, rail_y), (rail_x + (i + 1) * cell_w, rail_y + rail_h), TEAL, -1)
+                text_color = DARK_GRAY
+            else:
+                text_color = WHITE
+
+            label = eff[:3].upper()
+            (tw, _), _ = cv2.getTextSize(label, FONT_MONO, 0.8, 1)
+            cv2.putText(frame, label, (cx - tw // 2, rail_y + 18), FONT_MONO, 0.8, text_color, 1, cv2.LINE_AA)

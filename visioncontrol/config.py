@@ -65,6 +65,16 @@ class Config:
     MIN_FACE_DETECTION_CONFIDENCE = float(os.getenv("MIN_FACE_DETECTION_CONFIDENCE", 0.5))
     MIN_FACE_TRACKING_CONFIDENCE  = float(os.getenv("MIN_FACE_TRACKING_CONFIDENCE", 0.5))
 
+    # ── Phase 8: AR Emoji & Face Effect Engine ────────────────────────────────
+    AR_ENABLED              = os.getenv("AR_ENABLED", "true").lower() == "true"
+    DEBUG_AR                = os.getenv("DEBUG_AR", "true").lower() == "true"
+    AR_SMOOTHING_ALPHA      = float(os.getenv("AR_SMOOTHING_ALPHA", 0.4))
+    EMOJI_SCALE_MULTIPLIER  = float(os.getenv("EMOJI_SCALE_MULTIPLIER", 1.5))
+    EMOJI_MIN_SCALE         = float(os.getenv("EMOJI_MIN_SCALE", 0.1))
+    EMOJI_MAX_SCALE         = float(os.getenv("EMOJI_MAX_SCALE", 2.0))
+    EMOJI_OFFSET_X          = float(os.getenv("EMOJI_OFFSET_X", 0.0))
+    EMOJI_OFFSET_Y          = float(os.getenv("EMOJI_OFFSET_Y", -0.05))
+
     # ── OpenAI (later phases) ─────────────────────────────────────────────────
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL   = os.getenv("OPENAI_MODEL",   "gpt-4o")

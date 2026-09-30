@@ -20,6 +20,7 @@ from gestures import (
     GestureResult, GestureEvent, ControlMode, GestureType,
 )
 from devices import DeviceController, CommandBus, SerialTransport
+from ar import ARController, ARRenderer
 from ui.hud import HUD
 
 
@@ -59,6 +60,18 @@ class VisionControlApp:
         else:
             self.face_tracker = None
             self.face_feature_extractor = None
+
+        # Phase 8 — AR Controller & AR Renderer
+        self.ar_enabled = cfg.AR_ENABLED
+        self.ar_controller = ARController()
+        self.ar_renderer = ARRenderer(
+            offset_x=cfg.EMOJI_OFFSET_X,
+            offset_y=cfg.EMOJI_OFFSET_Y,
+            scale_multiplier=cfg.EMOJI_SCALE_MULTIPLIER,
+            min_scale=cfg.EMOJI_MIN_SCALE,
+            max_scale=cfg.EMOJI_MAX_SCALE,
+            smoothing_alpha=cfg.AR_SMOOTHING_ALPHA,
+        )
 
         self.gesture_sm = GestureStateMachine(
             confirm_frames=cfg.GESTURE_CONFIRM_FRAMES,
@@ -168,13 +181,22 @@ class VisionControlApp:
                 # Sync control mode between gesture mapper and device controller
                 self.device_controller.mode = self.gesture_mapper.mode
 
+                # 5c. Phase 8 — feed action into AR controller ───────────────────
+                if self.ar_enabled:
+                    self.ar_controller.handle_action(action)
+
             # Count down event display window
             if self._last_event_clear_counter > 0:
                 self._last_event_clear_counter -= 1
             else:
                 self._last_event = None
 
-            # 6. Render HUD ────────────────────────────────────────────────────
+            # 6. Render Phase 8 AR Overlay ─────────────────────────────────────
+            if self.ar_enabled:
+                anchor = face_state.anchor if (face_state and face_state.detected) else None
+                frame = self.ar_renderer.render(frame, anchor, self.ar_controller.state)
+
+            # 7. Render HUD ────────────────────────────────────────────────────
             frame = self.hud.render(
                 frame,
                 fps,
@@ -196,9 +218,12 @@ class VisionControlApp:
                 face_state=face_state,
                 debug_face=self.config.DEBUG_FACE,
                 face_inference_ms=face_infer_ms,
+                # Phase 8
+                ar_state=self.ar_controller.state,
+                debug_ar=self.config.DEBUG_AR,
             )
 
-            # 7. Display ───────────────────────────────────────────────────────
+            # 8. Display ───────────────────────────────────────────────────────
             cv2.imshow(self.config.WINDOW_NAME, frame)
 
             key = cv2.waitKey(1) & 0xFF
