@@ -355,3 +355,18 @@ class FaceState:
 | `SERIAL_AUTO_DETECT`       | `true`    | Auto-detect USB serial port on macOS, Linux, or Windows |
 | `DEBUG_SERIAL`             | `true`    | Print serial TX/RX debug lines to console |
 
+
+---
+
+## Phase 10 — Natural-Language Intent Engine
+
+Full documentation: [`docs/PHASE10_INTENT_ENGINE.md`](docs/PHASE10_INTENT_ENGINE.md)
+
+* `intent/` package: normalizer → parser (LLM provider or deterministic fallback) → entity extraction → validator + safety/permission layer → confidence policy → confirmation → existing `DeviceController` / `ARController`
+* Centralized schema (`intent/schema.py`) — 9 intents, actions, required entities, blocked actions
+* Multi-action commands ("turn on the fan and lower the brightness"), each child validated independently
+* Configurable thresholds: `INTENT_AUTO_EXECUTE_THRESHOLD=0.85`, `INTENT_CONFIRM_THRESHOLD=0.60`
+* Human-readable confirmations ("I understood that you want to turn off all connected devices. Should I continue?")
+* Provider-agnostic `IntentProvider` (OpenAI included); offline deterministic fallback on timeout/failure
+* Service boundary `IntentService` + optional local HTTP API (`POST /api/intent/parse`, `INTENT_API_ENABLED=true`)
+* HUD **INTENT ENGINE** panel; type commands in the terminal, `i` = demo command, `y`/`n` = confirm/cancel

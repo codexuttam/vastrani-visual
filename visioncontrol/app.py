@@ -22,7 +22,22 @@ from gestures import (
 from devices import DeviceController, CommandBus, SerialTransport
 from ar import ARController, ARRenderer
 from ai import AIRouter
+from intent import IntentEngine, IntentService
+from intent.api import IntentAPIServer
 from ui.hud import HUD
+
+import queue
+import threading
+
+INTENT_DEMO_COMMANDS = [
+    "turn on the bedroom fan",
+    "could you please make the lights brighter",
+    "turn on the fan and lower the brightness",
+    "turn it off",
+    "turn off everything",
+    "do that",
+    "open spotify",
+]
 
 
 class VisionControlApp:
@@ -116,6 +131,19 @@ class VisionControlApp:
 
         self.hud = HUD()
 
+        # Phase 10 — Natural-Language Intent Engine (routes through the
+        # existing DeviceController / ARController; never executes directly)
+        self.intent_engine: Optional[IntentEngine] = None
+        self.intent_service: Optional[IntentService] = None
+        self.intent_api: Optional[IntentAPIServer] = None
+        self._intent_queue: "queue.Queue[str]" = queue.Queue()
+        self._intent_demo_idx = 0
+        if cfg.INTENT_ENGINE_ENABLED:
+            self.intent_engine = IntentEngine.from_config(
+                cfg, device_controller=self.device_controller, ar_controller=self.ar_controller
+            )
+            self.intent_service = IntentService(self.intent_engine)
+
         self.running = False
         # Persist last event for a short display window
         self._last_event: Optional[GestureEvent] = None
@@ -134,6 +162,7 @@ class VisionControlApp:
 
             self.camera.start()
             self.running = True
+            self._start_intent_services()
             self.run_loop()
         except RuntimeError as e:
             print(f"\n[FATAL ERROR] {e}")
@@ -146,10 +175,55 @@ class VisionControlApp:
         finally:
             self.cleanup()
 
+    # ─── Phase 10: intent engine plumbing ───────────────────────────────────────
+
+    def _start_intent_services(self):
+        """Background worker (keeps the camera loop non-blocking), console, optional API."""
+        if self.intent_engine is None:
+            return
+        threading.Thread(target=self._intent_worker, daemon=True).start()
+        if self.config.INTENT_CONSOLE_ENABLED and sys.stdin and sys.stdin.isatty():
+            threading.Thread(target=self._intent_console, daemon=True).start()
+            print("[INTENT] Type a command in this terminal (e.g. 'turn on the fan'); 'yes'/'no' to confirm.")
+        if self.config.INTENT_API_ENABLED:
+            try:
+                self.intent_api = IntentAPIServer(
+                    self.intent_service, self.config.INTENT_API_HOST, self.config.INTENT_API_PORT
+                ).start()
+                print(f"[INTENT] API listening on http://{self.config.INTENT_API_HOST}:"
+                      f"{self.config.INTENT_API_PORT}/api/intent/parse")
+            except OSError as e:
+                print(f"[INTENT] API disabled: {e}")
+
+    def _intent_console(self):
+        while self.running:
+            try:
+                line = input()
+            except (EOFError, KeyboardInterrupt):
+                return
+            if line.strip():
+                self._intent_queue.put(line)
+
+    def _intent_worker(self):
+        while self.running:
+            try:
+                text = self._intent_queue.get(timeout=0.2)
+            except queue.Empty:
+                continue
+            if text == "__confirm__":
+                result = self.intent_engine.confirm()
+            elif text == "__cancel__":
+                result = self.intent_engine.cancel()
+            else:
+                print(f"\n[INTENT] > {text}")
+                result = self.intent_engine.handle(text)
+            print(f"[INTENT] {result.status}: {result.message}")
+
     def run_loop(self):
         print(
             f"VisionControl active on Camera {self.config.CAMERA_INDEX}. "
-            "Press 'q' or 'ESC' to quit. Press 't' to test AI semantic command."
+            "Press 'q' or 'ESC' to quit. Press 't' to test AI semantic command. "
+            "Press 'i' for an intent-engine demo command, 'y'/'n' to confirm/cancel."
         )
         while self.running:
             # 1. Capture ──────────────────────────────────────────────────────
@@ -237,6 +311,11 @@ class VisionControlApp:
                 ai_mode=self.ai_router.ai_mode,
                 last_ai_record=self.ai_router.last_record,
                 debug_ai=self.config.DEBUG_AI,
+                # Phase 10
+                intent_result=self.intent_engine.last_result if self.intent_engine else None,
+                intent_pending=self.intent_engine.has_pending if self.intent_engine else False,
+                intent_provider=self.intent_engine.provider_name if self.intent_engine else "off",
+                debug_intent=self.config.DEBUG_INTENT and self.intent_engine is not None,
             )
 
             # 8. Display ───────────────────────────────────────────────────────
@@ -259,9 +338,22 @@ class VisionControlApp:
                 self.ai_router.process_text_command_async(
                     prompt, self.device_controller.registry, self.device_controller
                 )
+            elif key == ord("i") and self.intent_engine is not None:
+                cmd = INTENT_DEMO_COMMANDS[self._intent_demo_idx % len(INTENT_DEMO_COMMANDS)]
+                self._intent_demo_idx += 1
+                self._intent_queue.put(cmd)
+            elif key == ord("y") and self.intent_engine is not None and self.intent_engine.has_pending:
+                self._intent_queue.put("__confirm__")
+            elif key == ord("n") and self.intent_engine is not None and self.intent_engine.has_pending:
+                self._intent_queue.put("__cancel__")
 
     def cleanup(self):
         print("Shutting down VisionControl...")
+        self.running = False
+        if self.intent_api is not None:
+            self.intent_api.stop()
+        if self.intent_engine is not None:
+            self.intent_engine.shutdown()
         self.ai_router.stop()
         self.camera.stop()
         self.hand_tracker.close()

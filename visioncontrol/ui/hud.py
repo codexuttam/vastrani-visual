@@ -88,6 +88,11 @@ class HUD:
         ai_mode:        str                      = "EVENT",
         last_ai_record: Optional[object]         = None,
         debug_ai:       bool                     = True,
+        # ── Phase 10 ───────────────────────────────────────────────────────────────
+        intent_result:  Optional[object]         = None,
+        intent_pending: bool                     = False,
+        intent_provider: str                     = "fallback",
+        debug_intent:   bool                     = False,
     ):
         h, w, _ = frame.shape
 
@@ -167,6 +172,10 @@ class HUD:
         # ── Phase 9: AI Intelligence Panel ───────────────────────────────────
         if debug_ai:
             self._render_ai_panel(frame, ai_status, ai_mode, last_ai_record)
+
+        # ── Phase 10: Intent Engine Panel ───────────────────────────────────
+        if debug_intent:
+            self._render_intent_panel(frame, intent_result, intent_pending, intent_provider)
 
         return frame
 
@@ -593,4 +602,65 @@ class HUD:
             row("Last Intent:", "NONE", (140, 140, 140))
             row("Device:", "NONE", (140, 140, 140))
             row("Confidence:", "—", (140, 140, 140))
+
+    # ─── Phase 10: Intent Engine Panel ────────────────────────────────────────
+
+    INTENT_STATUS_COLORS = {
+        "EXECUTED": GREEN, "READY": GREEN, "NEEDS_CONFIRMATION": ORANGE,
+        "NEEDS_CLARIFICATION": YELLOW, "CANCELLED": (140, 140, 140),
+        "REJECTED": RED, "EXECUTION_FAILED": RED, "ERROR": RED,
+    }
+
+    @staticmethod
+    def _clip(text: str, n: int = 30) -> str:
+        text = text or ""
+        return text if len(text) <= n else text[: n - 1] + "~"
+
+    def _render_intent_panel(self, frame, result=None, pending: bool = False, provider: str = "fallback"):
+        h, w, _ = frame.shape
+        px, py = w - 300, 465
+        pw, ph = 285, 125
+        if py + ph > h - 70:          # keep clear of the device rail on small frames
+            py = max(60, h - 70 - ph)
+
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (px - 8, py - 4), (px + pw, py + ph), DARK_GRAY, -1)
+        cv2.addWeighted(overlay, 0.72, frame, 0.28, 0, frame)
+        cv2.rectangle(frame, (px - 8, py - 4), (px + pw, py + 22), BLUE, -1)
+        cv2.putText(frame, f"INTENT ENGINE [{provider}]", (px, py + 14), FONT, 0.45, WHITE, 1, cv2.LINE_AA)
+
+        y = py + 38
+
+        def row(label, value, color=WHITE):
+            nonlocal y
+            cv2.putText(frame, f"{label:<8}{self._clip(str(value))}", (px, y),
+                        FONT_MONO, 1.0, color, 1, cv2.LINE_AA)
+            y += 18
+
+        grey = (140, 140, 140)
+        if result is None:
+            row("You:", "- type in terminal / 'i'", grey)
+            row("Intent:", "NONE", grey)
+            row("State:", "IDLE", grey)
+            return
+
+        cmd = getattr(result, "command", None)
+        if cmd is not None and getattr(cmd, "is_multi", False):
+            interp = "multi: " + ", ".join(c.action or "?" for c in cmd.actions)
+        elif cmd is not None:
+            dev = cmd.entities.get("device") or cmd.entities.get("target") or ""
+            interp = f"{cmd.action or cmd.intent} {dev}".strip()
+        else:
+            interp = "NONE"
+        status = result.status
+        color = self.INTENT_STATUS_COLORS.get(status, WHITE)
+
+        row("You:", f'"{result.raw_input}"', CYAN)
+        row("Intent:", interp, YELLOW)
+        row("Conf:", f"{cmd.confidence:.2f}" if cmd is not None else "-", WHITE)
+        row("State:", status, color)
+        if pending:
+            row("", "Confirm? [y] yes / [n] no", ORANGE)
+        else:
+            row("", result.message, color if status not in ("EXECUTED", "READY") else WHITE)
 

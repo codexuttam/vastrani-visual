@@ -84,3 +84,18 @@ class Config:
     AI_MIN_CONFIDENCE       = float(os.getenv("AI_MIN_CONFIDENCE", 0.75))
     AI_MIN_REQUEST_INTERVAL = float(os.getenv("AI_MIN_REQUEST_INTERVAL", 1.0))
     DEBUG_AI                = os.getenv("DEBUG_AI", "true").lower() == "true"
+
+    # ── Phase 10: Natural-Language Intent Engine ─────────────────────────────
+    INTENT_ENGINE_ENABLED         = os.getenv("INTENT_ENGINE_ENABLED", "true").lower() == "true"
+    # auto = OpenAI when an API key is configured, otherwise deterministic fallback only
+    INTENT_PROVIDER               = os.getenv("INTENT_PROVIDER", "auto").lower()
+    INTENT_PROVIDER_TIMEOUT       = float(os.getenv("INTENT_PROVIDER_TIMEOUT", 5.0))
+    INTENT_AUTO_EXECUTE_THRESHOLD = float(os.getenv("INTENT_AUTO_EXECUTE_THRESHOLD", 0.85))
+    INTENT_CONFIRM_THRESHOLD      = float(os.getenv("INTENT_CONFIRM_THRESHOLD", 0.60))
+    INTENT_CONFIRMATION_TIMEOUT   = float(os.getenv("INTENT_CONFIRMATION_TIMEOUT", 30.0))
+    INTENT_LOG_RAW_INPUT          = os.getenv("INTENT_LOG_RAW_INPUT", "true").lower() == "true"
+    INTENT_CONSOLE_ENABLED        = os.getenv("INTENT_CONSOLE_ENABLED", "true").lower() == "true"
+    INTENT_API_ENABLED            = os.getenv("INTENT_API_ENABLED", "false").lower() == "true"
+    INTENT_API_HOST               = os.getenv("INTENT_API_HOST", "127.0.0.1")
+    INTENT_API_PORT               = int(os.getenv("INTENT_API_PORT", 8765))
+    DEBUG_INTENT                  = os.getenv("DEBUG_INTENT", "true").lower() == "true"
