@@ -25,6 +25,9 @@ from ai import AIRouter
 from intent import IntentEngine, IntentService
 from intent.api import IntentAPIServer
 from ui.hud import HUD
+from ui.contracts import HUDMode, NotificationCategory
+from health import StartupDiagnostics, HealthMonitor
+from version import __version__
 
 import queue
 import threading
@@ -129,7 +132,8 @@ class VisionControlApp:
             min_confidence=cfg.AI_MIN_CONFIDENCE,
         )
 
-        self.hud = HUD()
+        hud_mode_val = HUDMode.DEVELOPER if cfg.HUD_MODE == "DEVELOPER" else HUDMode.STANDARD
+        self.hud = HUD(mode=hud_mode_val, reduced_motion=cfg.REDUCED_MOTION)
 
         # Phase 10 — Natural-Language Intent Engine (routes through the
         # existing DeviceController / ARController; never executes directly)
@@ -152,7 +156,7 @@ class VisionControlApp:
         self._test_prompt_idx = 0
 
     def start(self):
-        print("Initializing VisionControl...")
+        StartupDiagnostics.run_checks(self.config)
         try:
             if self.config.DEVICE_MODE == "HARDWARE" and self.config.SERIAL_ENABLED:
                 print(f"[HARDWARE MODE] Connecting to Arduino...")
@@ -322,7 +326,13 @@ class VisionControlApp:
             cv2.imshow(self.config.WINDOW_NAME, frame)
 
             key = cv2.waitKey(1) & 0xFF
-            if key == ord("q") or key == 27:
+            if key == ord("q"):
+                self.running = False
+            elif key in (13, ord("y"), ord("Y")) and self.intent_engine is not None and self.intent_engine.has_pending:
+                self._intent_queue.put("__confirm__")
+            elif key in (27, ord("n"), ord("N")) and self.intent_engine is not None and self.intent_engine.has_pending:
+                self._intent_queue.put("__cancel__")
+            elif key == 27:
                 self.running = False
             elif key == ord("t"):
                 test_prompts = [
@@ -342,10 +352,8 @@ class VisionControlApp:
                 cmd = INTENT_DEMO_COMMANDS[self._intent_demo_idx % len(INTENT_DEMO_COMMANDS)]
                 self._intent_demo_idx += 1
                 self._intent_queue.put(cmd)
-            elif key == ord("y") and self.intent_engine is not None and self.intent_engine.has_pending:
-                self._intent_queue.put("__confirm__")
-            elif key == ord("n") and self.intent_engine is not None and self.intent_engine.has_pending:
-                self._intent_queue.put("__cancel__")
+            else:
+                self.hud.handle_key_event(key)
 
     def cleanup(self):
         print("Shutting down VisionControl...")

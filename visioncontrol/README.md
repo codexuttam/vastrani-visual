@@ -370,3 +370,37 @@ Full documentation: [`docs/PHASE10_INTENT_ENGINE.md`](docs/PHASE10_INTENT_ENGINE
 * Provider-agnostic `IntentProvider` (OpenAI included); offline deterministic fallback on timeout/failure
 * Service boundary `IntentService` + optional local HTTP API (`POST /api/intent/parse`, `INTENT_API_ENABLED=true`)
 * HUD **INTENT ENGINE** panel; type commands in the terminal, `i` = demo command, `y`/`n` = confirm/cancel
+
+---
+
+## Phase 11 — Polished UI / HUD + System Visualization
+
+Full documentation: [`docs/PHASE11_UI_HUD.md`](docs/PHASE11_UI_HUD.md)
+
+* Modular presentation engine (`ui/`) featuring dark glassmorphism styling, clean visual hierarchy, low noise, and status indicators
+* `SystemPanelComponent`: Persistent top header bar with system status badge (`ONLINE`, `CAMERA OFFLINE`, `AI SERVICE OFFLINE`, `ARDUINO DISCONNECTED`, `DEGRADED`) and mode badge
+* `VisionPanelComponent`: Camera viewport overlays and recovery guidance (`[ RETRY (C) ]`)
+* `HandPanelComponent`: Real-time hand tracking status, recognized gesture, confidence %, and finger state matrix (`THU`, `IND`, `MID`, `RNG`, `PNK`)
+* `FacePanelComponent`: Face tracking diagnostics, detection count, stability rating, and inference latency
+* `IntentPanelComponent`: Phase 10 AI intent card displaying raw user prompt vs parsed intent, target, confidence %, and execution status
+* `ConfirmationDialogComponent`: High-priority modal overlay card for pending intent confirmation (`[ CONFIRM (Y/ENTER) ]` / `[ CANCEL (N/ESC) ]`)
+* `DevicePanelComponent`: Dynamic device section rendered directly from `DeviceRegistry` + bottom navigation rail
+* `ArduinoPanelComponent`: Hardware serial status, USB port, latency, last command, and ACK response
+* `HistoryPanelComponent`: Recent command execution log with timestamps and status icons (`✓` / `✕`)
+* `EventStreamPanelComponent` & `PerformancePanelComponent`: Real-time event logging feed and performance monitor (FPS, pipeline latencies, memory footprint MB)
+* `NotificationPanelComponent`: Toast overlay manager with category styling and auto-dismissal countdown bars
+* Keyboard controls: `d` (Standard/Developer mode toggle), `h` (HUD visibility toggle), `r` (reset telemetry), `c` (camera recovery retry), `y`/`ENTER` (confirm), `n`/`ESC` (cancel)
+
+---
+
+## Phase 12 — Final Hardening, Testing, Reliability, Security & Production Release (v1.0.0)
+
+Full documentation: [`docs/PHASE12_HARDENING_AND_RELEASE.md`](docs/PHASE12_HARDENING_AND_RELEASE.md)
+
+* **Version**: `v1.0.0`
+* **Pre-Flight Diagnostics (`health.py`)**: Startup initialization checks validating environment, computer vision models, intent engine, AI provider, device layer, and Arduino transport
+* **Structured Error System (`errors.py`)**: Unified severity taxonomy (`INFO`, `WARNING`, `RECOVERABLE_ERROR`, `CRITICAL_ERROR`) and exception hierarchy
+* **Failure Isolation Boundaries**: Subsystem resilience preventing single points of failure (Camera offline recovery, OpenAI timeout fallback, Arduino background auto-reconnect)
+* **Security Guardrails**: Strict schema validation on AI outputs, secret masking (`sk-***`), and prohibition of arbitrary shell code execution
+* **Demo Mode**: Controlled demo mode (`DEMO_MODE=true`) for simulation and presentation
+* **Comprehensive Test Suite**: 296 unit, integration, failure, and hardening tests passing with 100% success rate

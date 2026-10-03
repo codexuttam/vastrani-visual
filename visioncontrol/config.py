@@ -99,3 +99,24 @@ class Config:
     INTENT_API_HOST               = os.getenv("INTENT_API_HOST", "127.0.0.1")
     INTENT_API_PORT               = int(os.getenv("INTENT_API_PORT", 8765))
     DEBUG_INTENT                  = os.getenv("DEBUG_INTENT", "true").lower() == "true"
+
+    # ── Phase 11: Polished UI / HUD + System Visualization ───────────────────
+    HUD_ENABLED                   = os.getenv("HUD_ENABLED", "true").lower() == "true"
+    HUD_MODE                      = os.getenv("HUD_MODE", "STANDARD").upper()  # STANDARD or DEVELOPER
+    HUD_THEME                     = os.getenv("HUD_THEME", "DARK_CYAN").upper()
+    REDUCED_MOTION                = os.getenv("REDUCED_MOTION", "false").lower() == "true"
+    HUD_SHOW_NOTIFICATIONS        = os.getenv("HUD_SHOW_NOTIFICATIONS", "true").lower() == "true"
+    HUD_SHOW_EVENT_STREAM         = os.getenv("HUD_SHOW_EVENT_STREAM", "true").lower() == "true"
+    HUD_SHOW_PERFORMANCE          = os.getenv("HUD_SHOW_PERFORMANCE", "true").lower() == "true"
+    HUD_MAX_EVENTS                = int(os.getenv("HUD_MAX_EVENTS", 50))
+    HUD_MAX_NOTIFICATIONS         = int(os.getenv("HUD_MAX_NOTIFICATIONS", 5))
+    HUD_MAX_COMMAND_HISTORY       = int(os.getenv("HUD_MAX_COMMAND_HISTORY", 10))
+    HUD_NOTIFICATION_TIMEOUT_SEC  = float(os.getenv("HUD_NOTIFICATION_TIMEOUT_SEC", 4.0))
+
+    # ── Phase 12: Final Hardening, Reliability, Security & Production ────────
+    DEMO_MODE                     = os.getenv("DEMO_MODE", "false").lower() == "true"
+    HEALTH_CHECK_INTERVAL_SEC     = float(os.getenv("HEALTH_CHECK_INTERVAL_SEC", 5.0))
+    MAX_EVENT_LOG_SIZE            = int(os.getenv("MAX_EVENT_LOG_SIZE", 200))
+    MAX_COMMAND_HISTORY_SIZE      = int(os.getenv("MAX_COMMAND_HISTORY_SIZE", 100))
+    STRICT_INPUT_VALIDATION       = os.getenv("STRICT_INPUT_VALIDATION", "true").lower() == "true"
+
